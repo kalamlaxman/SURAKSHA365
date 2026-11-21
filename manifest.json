@@ -1,0 +1,20 @@
+{
+  "name": "SURAKSHA 365 – Women's Safety & Emergency Assistance",
+  "short_name": "SURAKSHA 365",
+  "description": "SURAKSHA 365 – Women's Safety & Emergency Assistance. Your Safety, Our Priority – 365 Days a Year.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080B18",
+  "theme_color": "#080B18",
+  "categories": ["safety", "utilities", "social"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563EB'><path d='M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

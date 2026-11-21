@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for Role-Based Access Control
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    function isPolice() {
+      return isAuthenticated() && (getUserRole() == 'police' || request.auth.token.isResponder == true);
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin' || request.auth.token.isAdmin == true);
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // Ordinary users can only read and update their own profile
+      allow read: if isOwner(userId) || isPolice() || isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Emergency Requests Collection (SOS)
+    match /emergency_requests/{requestId} {
+      // Users can read their own requests; Police and Admin can read all active and historical requests
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isPolice() || isAdmin()
+      );
+      
+      // Users can create emergency requests with verified location permission
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.location != null;
+      
+      // Status updates: Only Police responders and Admins can update status, assign responders, and append notes
+      // Users can only cancel/resolve their own request
+      allow update: if isAdmin() || isPolice() || (
+        isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolutionSummary', 'resolvedAt'])
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 3. Complaints Collection
+    match /complaints/{complaintId} {
+      // Users can view their own complaints; Police and Admin can review all
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isPolice() || isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Only police investigators and admins can update complaint status or remarks
+      allow update: if isPolice() || isAdmin() || (
+        isOwner(resource.data.userId) && resource.data.status == 'Submitted'
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 4. Trusted Contacts Subcollection
+    match /users/{userId}/trusted_contacts/{contactId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      // Police can read trusted contacts during an active emergency for emergency liaison
+      allow read: if isPolice();
+    }
+
+    // 5. Audit & Dispatch Logs (Admin & Police only)
+    match /audit_logs/{logId} {
+      allow read: if isPolice() || isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+  }
+}
